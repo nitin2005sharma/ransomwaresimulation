@@ -1,0 +1,19 @@
+{
+    "ransomware_patterns": {
+        "file_extensions": [".encrypted", ".locked", ".crypto", ".ransom"],
+        "ransom_note_names": ["READ_ME", "DECRYPT", "RECOVER", "HELP_YOUR_FILES"],
+        "suspicious_processes": ["encrypt", "locker", "crypto", "ransom"]
+    },
+    
+    "detection_thresholds": {
+        "files_per_minute": 50,
+        "entropy_threshold": 7.5,
+        "similar_extension_changes": 10
+    },
+    
+    "prevention_rules": {
+        "protected_directories": ["/home", "/documents", "/desktop"],
+        "allowed_processes": ["explorer", "notepad", "word", "excel"],
+        "blocked_extensions": [".exe", ".bat", ".cmd", ".ps1"]
+    }
+}

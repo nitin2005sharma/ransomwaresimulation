@@ -1,0 +1,30 @@
+{
+    "test_directory": "./data/test_files",
+    "backup_directory": "./data/backups",
+    "ransom_notes_directory": "./data/ransom_notes",
+    "log_directory": "./data/logs",
+    
+    "simulation_settings": {
+        "encryption_algorithm": "AES-256-CBC",
+        "file_extensions_to_encrypt": [".txt", ".doc", ".docx", ".xls", ".xlsx", ".pdf", ".jpg", ".png"],
+        "max_file_size_mb": 10,
+        "simulation_delay_ms": 100
+    },
+    
+    "detection_settings": {
+        "mass_operation_threshold": 10,
+        "entropy_threshold": 7.0,
+        "monitor_interval_seconds": 1
+    },
+    
+    "recovery_settings": {
+        "backup_retention_days": 7,
+        "auto_backup_interval_hours": 24
+    },
+    
+    "ui_settings": {
+        "theme": "dark",
+        "update_interval_ms": 1000,
+        "max_log_entries": 1000
+    }
+}
