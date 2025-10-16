@@ -25,8 +25,12 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     traceback.print_exception(exc_type, exc_value, exc_traceback)
     print("="*60)
     
-    input("\nPress Enter to exit...")
-    sys.exit(1)
+    try:
+        # Avoid blocking in non-interactive/headless environments
+        if sys.stdin and sys.stdin.isatty():
+            input("\nPress Enter to exit...")
+    finally:
+        sys.exit(1)
 
 # Set global exception handler
 sys.excepthook = handle_exception
@@ -40,14 +44,31 @@ src_path = Path(__file__).parent / 'src'
 sys.path.insert(0, str(src_path))
 print(f"Source path: {src_path}")
 
+# Detect GUI availability (headless-friendly)
+tk_available = False
 try:
-    import tkinter as tk
-    from tkinter import ttk, messagebox
+    import tkinter as tk  # type: ignore
+    from tkinter import ttk, messagebox  # type: ignore
+    tk_available = True
     print("✓ Tkinter imports successful")
-except ImportError as e:
-    print(f"✗ Tkinter import failed: {e}")
-    input("Press Enter to exit...")
-    sys.exit(1)
+except Exception as e:
+    print(f"✗ Tkinter unavailable: {e}")
+
+# Determine if we should enable GUI
+is_linux = sys.platform.startswith("linux")
+display_env = os.environ.get("DISPLAY")
+force_headless = os.environ.get("HEADLESS") == "1"
+gui_enabled = (not force_headless) and tk_available and (not is_linux or bool(display_env))
+
+# Import GUI only when available to avoid hard failure in headless mode
+MainApplication = None
+if gui_enabled:
+    try:
+        from ui.main_window import MainApplication  # type: ignore
+        print("✓ MainApplication import successful")
+    except Exception as e:
+        print(f"✗ Failed to import GUI application: {e}")
+        gui_enabled = False
 
 try:
     from core.file_monitor import AdvancedFileMonitor
@@ -56,12 +77,10 @@ try:
     from core.recovery_system import RecoverySystem
     from kernel.memory_manager import EncryptionMemoryManager
     from kernel.system_calls import AdvancedSystemCalls
-    from ui.main_window import MainApplication
-    print("✓ All application imports successful")
+    print("✓ Core/kernel imports successful")
 except ImportError as e:
-    print(f"✗ Application import failed: {e}")
+    print(f"✗ Core/kernel import failed: {e}")
     traceback.print_exc()
-    input("Press Enter to exit...")
     sys.exit(1)
 
 class RansomwareSimulator:
@@ -69,18 +88,22 @@ class RansomwareSimulator:
     Main controller for ransomware simulation with real-time UI
     """
     
-    def __init__(self):
+    def __init__(self, gui_enabled: bool = True):
         print("Initializing RansomwareSimulator...")
         try:
-            # Create root window first
-            self.root = tk.Tk()
-            self.root.title("Ransomware Simulation & Recovery")
-            
-            # Set window to appear in center and be always on top initially
-            self.root.geometry("1200x800")
-            self.root.lift()
-            self.root.attributes('-topmost', True)
-            self.root.after(1000, lambda: self.root.attributes('-topmost', False))
+            self.gui_enabled = bool(gui_enabled)
+            # Create root window only when GUI is enabled
+            if self.gui_enabled and MainApplication is not None:
+                self.root = tk.Tk()  # type: ignore[name-defined]
+                self.root.title("Ransomware Simulation & Recovery")
+                
+                # Set window to appear in center and be always on top initially
+                self.root.geometry("1200x800")
+                self.root.lift()
+                self.root.attributes('-topmost', True)
+                self.root.after(1000, lambda: self.root.attributes('-topmost', False))
+            else:
+                self.root = None
             
             self.app = None
             
@@ -210,20 +233,27 @@ class RansomwareSimulator:
             print(f"Found {len(files)} files to encrypt")
             
             for file_path in files:
-                if file_path.is_file() and not file_path.name.startswith("!!!_"):
-                    print(f"Encrypting: {file_path.name}")
-                    if self.encryptor.encrypt_file(file_path, self.encryption_key):
-                        self.encrypted_files.append(file_path)
-                        file_count += 1
+                if not file_path.is_file():
+                    continue
+                # Skip ransom notes and already-encrypted files
+                if file_path.name.startswith("!!!_") or file_path.name.endswith(".encrypted"):
+                    continue
+                
+                print(f"Encrypting: {file_path.name}")
+                if self.encryptor.encrypt_file(file_path, self.encryption_key):
+                    # Track the new encrypted file path for recovery
+                    encrypted_path = file_path.with_suffix(file_path.suffix + '.encrypted')
+                    self.encrypted_files.append(encrypted_path)
+                    file_count += 1
                         
-                        # Update UI in thread-safe manner
-                        if hasattr(self, 'app') and self.app:
-                            self.app.update_encryption_status(file_count, str(file_path))
+                    # Update UI in thread-safe manner
+                    if hasattr(self, 'app') and self.app:
+                        self.app.update_encryption_status(file_count, str(encrypted_path))
                         
-                        # Small delay to simulate real encryption process
-                        time.sleep(0.1)
-                    else:
-                        print(f"✗ Failed to encrypt: {file_path.name}")
+                    # Small delay to simulate real encryption process
+                    time.sleep(0.1)
+                else:
+                    print(f"✗ Failed to encrypt: {file_path.name}")
             
             print(f"✓ Encryption completed: {file_count} files encrypted")
             
@@ -393,16 +423,35 @@ This is for educational purposes only.
         print("✓ Simulation cleanup complete")
 
     def run(self):
-        """Start the application"""
+        """Start the application (GUI if available, else headless)."""
         try:
-            print("Creating main application window...")
-            self.app = MainApplication(self.root, self)
-            print("✓ Main application created successfully!")
-            print("Starting main loop...")
-            self.root.mainloop()
-            print("Main loop ended.")
+            if self.gui_enabled and self.root is not None and MainApplication is not None:
+                print("Creating main application window...")
+                self.app = MainApplication(self.root, self)  # type: ignore[call-arg]
+                print("✓ Main application created successfully!")
+                print("Starting main loop...")
+                self.root.mainloop()
+                print("Main loop ended.")
+            else:
+                print("GUI not available - running in headless mode.")
+                self.run_headless()
         except Exception as e:
-            print(f"✗ Error in main loop: {e}")
+            print(f"✗ Error in run(): {e}")
+            traceback.print_exc()
+
+    def run_headless(self):
+        """Minimal headless run: simulate encrypt/decrypt once and exit."""
+        try:
+            print("[HEADLESS] Starting simulation...")
+            self.simulation_active = True
+            self.encryption_key = self.encryptor.generate_key()
+            self.create_ransom_note()
+            self.encrypt_files()
+            print(f"[HEADLESS] Encrypted {len(self.encrypted_files)} files.")
+            self._recover_files()
+            print("[HEADLESS] Recovery complete.")
+        except Exception as e:
+            print(f"[HEADLESS] Error: {e}")
             traceback.print_exc()
 
 def main():
@@ -411,7 +460,7 @@ def main():
     
     simulator = None
     try:
-        simulator = RansomwareSimulator()
+        simulator = RansomwareSimulator(gui_enabled=gui_enabled)
         print("✓ Simulator created, starting GUI...")
         simulator.run()
     except KeyboardInterrupt:
@@ -419,7 +468,6 @@ def main():
     except Exception as e:
         print(f"✗ Fatal application error: {e}")
         traceback.print_exc()
-        input("Press Enter to exit...")
     finally:
         if simulator:
             simulator.cleanup()

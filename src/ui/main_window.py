@@ -372,11 +372,11 @@ class MainApplication:
         self.recover_btn.config(state=tk.DISABLED)
         
         def recovery_callback(message):
-            self.root.after(0, lambda: self.update_recovery_status(message))
+            self.root.after(0, lambda: self.set_recovery_status(message))
         
         self.simulator.start_recovery(recovery_callback)
     
-    def update_recovery_status(self, message):
+    def set_recovery_status(self, message):
         """Update recovery status in UI"""
         self.rec_status.config(text=message)
         self.status_label.config(text=message)

@@ -181,29 +181,29 @@ class AdvancedEncryptor:
     
     def calculate_file_entropy(self, file_path):
         """
-        Calculate file entropy to detect encryption
-        High entropy suggests encrypted content
+        Calculate Shannon entropy of a file's bytes.
+        Returns a value in the range [0, 8].
         """
         try:
+            import math
             with open(file_path, 'rb') as f:
                 data = f.read()
-            
-            if len(data) == 0:
-                return 0
-            
-            # Calculate byte frequency
-            frequency = [0] * 256
-            for byte in data:
-                frequency[byte] += 1
-            
-            # Calculate entropy
-            entropy = 0
-            for count in frequency:
-                if count > 0:
-                    p = count / len(data)
-                    entropy -= p * (p.log2() if p > 0 else 0)
-            
-            return entropy
-            
+
+            if not data:
+                return 0.0
+
+            byte_counts = [0] * 256
+            for b in data:
+                byte_counts[b] += 1
+
+            data_len = len(data)
+            entropy = 0.0
+            for count in byte_counts:
+                if count == 0:
+                    continue
+                p = count / data_len
+                entropy -= p * math.log2(p)
+
+            return float(entropy)
         except Exception:
-            return 0
+            return 0.0
