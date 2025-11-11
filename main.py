@@ -213,7 +213,8 @@ class RansomwareSimulator:
                 if file_path.is_file() and not file_path.name.startswith("!!!_"):
                     print(f"Encrypting: {file_path.name}")
                     if self.encryptor.encrypt_file(file_path, self.encryption_key):
-                        self.encrypted_files.append(file_path)
+                        encrypted_path = Path(str(file_path) + ".encrypted")
+                        self.encrypted_files.append(encrypted_path)
                         file_count += 1
                         
                         # Update UI in thread-safe manner
@@ -327,7 +328,7 @@ This is for educational purposes only.
                         
                         # Update UI
                         if hasattr(self, 'app') and self.app:
-                            self.app.update_recovery_status(recovered_count, str(file_path))
+                            self.app.update_recovery_progress(recovered_count, str(file_path))
                         
                         time.sleep(0.05)
                     else:
