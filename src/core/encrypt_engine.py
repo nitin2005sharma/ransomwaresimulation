@@ -1,5 +1,6 @@
 import os
 import time
+import math
 import hashlib
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
@@ -201,7 +202,7 @@ class AdvancedEncryptor:
             for count in frequency:
                 if count > 0:
                     p = count / len(data)
-                    entropy -= p * (p.log2() if p > 0 else 0)
+                    entropy -= p * math.log2(p)
             
             return entropy
             
