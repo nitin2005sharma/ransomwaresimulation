@@ -387,7 +387,7 @@ class MainApplication:
         self.recovery_log.see(tk.END)
         self.recovery_log.config(state=tk.DISABLED)
     
-    def update_recovery_status(self, file_count, file_path):
+    def update_recovery_progress(self, file_count, file_path):
         """Update recovery progress"""
         def update():
             total_files = len(self.simulator.encrypted_files)
